@@ -5,6 +5,7 @@ import path from 'path'
 
 // https://vite.dev/config/
 export default defineConfig({
+  base: '/drissbrtn.github2.io/', // <--- ASSUREZ-VOUS QUE CETTE LIGNE EST PRÉSENTE ET CORRECTE
   plugins: [react( ),tailwindcss()],
   resolve: {
     alias: {
