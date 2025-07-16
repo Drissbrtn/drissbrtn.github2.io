@@ -19,10 +19,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
-import { Badge } from "@/components/ui/badge";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const CSVGenerator = () => {
   const [formData, setFormData] = useState({
@@ -40,7 +40,7 @@ const CSVGenerator = () => {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [generatedData, setGeneratedData] = useState(null);
-  const [preview, setPreview] = useState({ headers: [], rows: [] });
+  const [preview, setPreview] = useState([]);
   const [stats, setStats] = useState(null);
   const [showPreview, setShowPreview] = useState(true);
   const [activeTab, setActiveTab] = useState("generator");
@@ -702,8 +702,6 @@ const CSVGenerator = () => {
 
   useEffect(() => {
     if (formData.secteur) {
-      // La logique de mise à jour automatique du nombre de colonnes est supprimée
-      // car l'utilisateur va maintenant le sélectionner manuellement.
     }
   }, [formData.secteur]);
 
@@ -730,8 +728,8 @@ const CSVGenerator = () => {
     const template = secteurTemplates[formData.secteur];
     let donnees = [];
     const selectedColonnes = template.colonnes.slice(0, formData.nombreColonnesSelectionne);
+    let numDoublons = 0;
 
-    // Génération des données initiales
     for (let i = 0; i < formData.lignes; i++) {
       const row = selectedColonnes.map((col) => {
         if (formData.includeNulls && Math.random() < 0.025) return null;
@@ -742,14 +740,12 @@ const CSVGenerator = () => {
       donnees.push(row);
     }
 
-    // Introduction des doublons
     if (formData.inclureDoublons && formData.pourcentageDoublons > 0) {
-      const numDoublons = Math.floor(formData.lignes * (formData.pourcentageDoublons / 100));
+      numDoublons = Math.floor(formData.lignes * (formData.pourcentageDoublons / 100));
       for (let i = 0; i < numDoublons; i++) {
         const randomIndex = Math.floor(Math.random() * formData.lignes);
-        donnees.push([...donnees[randomIndex]]); // Ajoute une copie de la ligne existante
+        donnees.push([...donnees[randomIndex]]);
       }
-      // Mélanger les données pour que les doublons ne soient pas tous à la fin
       donnees = donnees.sort(() => Math.random() - 0.5);
     }
 
@@ -757,6 +753,7 @@ const CSVGenerator = () => {
       colonnes: selectedColonnes,
       donnees: donnees,
       contexte_analyse: `Données générées pour le secteur ${formData.secteur}`,
+      nombreDoublonsGeneres: numDoublons,
     };
   };
 
@@ -794,7 +791,7 @@ const CSVGenerator = () => {
 
   const parseCSVForPreview = (csvData) => {
     const lines = csvData.split("\n").filter((line) => line.trim());
-    if (lines.length === 0) return { headers: [], rows: [] }; // Gérer le cas où il n'y a pas de lignes
+    if (lines.length === 0) return { headers: [], rows: [] };
     const headers = lines[0].split(",");
     const rows = lines.slice(1, 11).map((line) => {
       const values = line.split(",");
@@ -807,7 +804,7 @@ const CSVGenerator = () => {
   };
 
   const calculateStats = (data) => {
-    const { colonnes, donnees } = data;
+    const { colonnes, donnees, nombreDoublonsGeneres } = data;
     const totalRows = donnees.length;
     const totalColumns = colonnes.length;
 
@@ -843,6 +840,7 @@ const CSVGenerator = () => {
       completeness: Math.round(
         (1 - emptyValues / (totalRows * totalColumns)) * 100
       ),
+      nombreDoublonsGeneres: nombreDoublonsGeneres || 0,
     };
   };
 
@@ -871,7 +869,7 @@ const CSVGenerator = () => {
       });
 
       const { headers, rows } = parseCSVForPreview(csvData);
-      setPreview({ headers, rows });
+      setPreview(rows);
 
       const statistics = calculateStats(data);
       setStats(statistics);
@@ -938,18 +936,23 @@ const CSVGenerator = () => {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
       <div className="container mx-auto p-6 max-w-7xl">
         <Card className="shadow-2xl border-0">
-          <CardHeader className="bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-t-lg">
+                    <CardHeader className="bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-t-lg">
             <div className="flex items-center gap-4">
               <div className="p-3 bg-white/20 rounded-xl">
                 <Database className="w-8 h-8" />
               </div>
               <div>
                 <CardTitle className="text-3xl font-bold">
-                  Générateur de CSV Avancé
+                  Générateur de données cohérentes avancé
                 </CardTitle>
                 <CardDescription className="text-blue-100 text-lg">
                   Créez des jeux de données fictifs professionnels pour vos projets
                 </CardDescription>
+                <p className="mt-6 text-yellow-300 text-lg font-bold">
+                  <a href="https://claude.ai/public/artifacts/5c5cd93c-e664-478f-ae39-d9cb574a8acf" target="_blank" rel="noopener noreferrer" className="underline hover:text-white">
+                    Accéder au générateur intelligent ici
+                  </a>
+                </p>
               </div>
             </div>
           </CardHeader>
@@ -1032,7 +1035,7 @@ const CSVGenerator = () => {
                       <Select
                         value={String(formData.nombreColonnesSelectionne)}
                         onValueChange={(value) => handleSelectChange("nombreColonnesSelectionne", Number(value))}
-                        disabled={!formData.secteur} // Désactiver si aucun secteur n'est sélectionné
+                        disabled={!formData.secteur}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Sélectionner le nombre de colonnes" />
@@ -1040,7 +1043,7 @@ const CSVGenerator = () => {
                         <SelectContent>
                           {formData.secteur &&
                             Array.from({ length: secteurTemplates[formData.secteur]?.colonnes.length || 0 }, (_, i) => i + 1)
-                              .filter(num => num >= 2 && num <= 8) // Filtrer pour avoir entre 2 et 8 colonnes
+                              .filter(num => num >= 2 && num <= 8)
                               .map((num) => (
                                 <SelectItem key={num} value={String(num)}>
                                   {num} colonnes
@@ -1242,28 +1245,29 @@ const CSVGenerator = () => {
                               <table className="min-w-full border-collapse border border-gray-200">
                                 <thead className="bg-gray-50">
                                   <tr>
-                                    {preview.headers.map((header, index) => (
-                                      <th
-                                        key={index}
-                                        className="border border-gray-200 px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase"
-                                      >
-                                        {header}
-                                      </th>
-                                    ))}
+                                    {preview[0] &&
+                                      Object.keys(preview[0]).map((header, index) => (
+                                        <th
+                                          key={index}
+                                          className="border border-gray-200 px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase"
+                                        >
+                                          {header}
+                                        </th>
+                                      ))}
                                   </tr>
                                 </thead>
                                 <tbody>
-                                  {preview.rows.map((row, rowIndex) => (
+                                  {preview.map((row, rowIndex) => (
                                     <tr key={rowIndex} className={rowIndex % 2 === 0 ? "bg-white" : "bg-gray-50"}>
-                                      {preview.headers.map((header, colIndex) => (
+                                      {Object.values(row).map((value, colIndex) => (
                                         <td
                                           key={colIndex}
                                           className="border border-gray-200 px-4 py-2 text-sm text-gray-700"
                                         >
-                                          {row[header] === null || row[header] === "" ? (
+                                          {value === null || value === "" ? (
                                             <span className="text-gray-400 italic">null</span>
                                           ) : (
-                                            row[header]
+                                            value
                                           )}
                                         </td>
                                       ))}
@@ -1274,7 +1278,7 @@ const CSVGenerator = () => {
                             </div>
                           ) : (
                             <pre className="bg-gray-50 p-4 rounded-lg overflow-x-auto text-sm">
-                              {generatedData.json}
+                              {JSON.stringify(preview, null, 2)}
                             </pre>
                           )}
                         </CardContent>
@@ -1325,6 +1329,14 @@ const CSVGenerator = () => {
                             {stats.completeness}%
                           </p>
                         </div>
+                        {stats.nombreDoublonsGeneres > 0 && (
+                          <div className="text-center p-4 bg-pink-50 rounded-lg">
+                            <p className="text-sm text-gray-600 mb-1">Doublons Générés</p>
+                            <p className="text-3xl font-bold text-pink-600">
+                              {stats.nombreDoublonsGeneres.toLocaleString()}
+                            </p>
+                          </div>
+                        )}
                       </div>
                       
                       <Separator className="my-6" />
